@@ -185,16 +185,16 @@ impl NinjaWriter {
 
     fn write_line(&mut self, line: &str) {
         let out = format!("{}\n", line);
-        self.memory_p.write(out.as_bytes()).unwrap();
+        _ = self.memory_p.write(out.as_bytes()).unwrap();
     }
 
     fn dollars_in_line(&mut self, text: &str) -> usize {
-        return text.matches("&").count();
+        return text.matches('&').count();
     }
 
     pub fn as_string(&mut self) -> &str {
         let ret = std::str::from_utf8(&self.memory_p).unwrap();
-        return ret;
+        ret
     }
 
     pub fn close(&mut self) -> std::io::Result<()> {
@@ -203,7 +203,7 @@ impl NinjaWriter {
             .write(true)
             .truncate(true)
             .open(&self.file_path)?;
-        fp.write(&self.memory_p)?;
+        _ = fp.write(&self.memory_p)?;
         Ok(())
     }
 
@@ -217,7 +217,7 @@ impl NinjaWriter {
             let mut space: Option<usize> = Some(avail);
             loop {
                 let slice = &mtext[..space.unwrap()];
-                space = slice.rfind(" ");
+                space = slice.rfind(' ');
                 if space.is_none() || self.dollars_in_line(&mtext[..space.unwrap()]) % 2 == 0 {
                     break;
                 }
@@ -227,7 +227,7 @@ impl NinjaWriter {
                 space = Some(avail - 1);
                 loop {
                     let slice = &mtext[..space.unwrap() + 1];
-                    space = slice.find(" ");
+                    space = slice.find(' ');
 
                     if space.is_none() || self.dollars_in_line(&mtext[..space.unwrap()]) % 2 == 0 {
                         break;
@@ -241,7 +241,7 @@ impl NinjaWriter {
 
             let tstr = &mtext[..space.unwrap()];
             let out = format!("{}{} $\n", leading_space, tstr);
-            self.memory_p.write(out.as_bytes()).unwrap();
+            _ = self.memory_p.write(out.as_bytes()).unwrap();
 
             mtext = &mtext[space.unwrap() + 1..];
 
@@ -249,7 +249,7 @@ impl NinjaWriter {
         }
 
         let out = format!("{}{}\n", leading_space, mtext);
-        self.memory_p.write(out.as_bytes()).unwrap();
+        _ = self.memory_p.write(out.as_bytes()).unwrap();
     }
 
     pub fn comment(&mut self, comment: &str) -> &mut Self {
@@ -323,16 +323,16 @@ impl NinjaWriter {
     }
 
     fn escape_path(&mut self, word: &str) -> String {
-        return word.replace("$", "$$").replace(" ", "$ ").replace(":", "$:");
+        word.replace('$', "$$").replace(' ', "$ ").replace(':', "$:")
     }
 
-    fn escape_strings(&mut self, vec: &Vec<String>) -> Vec<String> {
+    fn escape_strings(&mut self, vec: &[String]) -> Vec<String> {
         vec.iter().map(|x| self.escape_path(x)).collect()
     }
 
     pub fn build(&mut self, build: &NinjaBuild) -> &mut Self {
         let mut outputs:Vec<String> = self.escape_strings(&build.outputs);
-        let mut all_input:Vec<String> = self.escape_strings(&&build.inputs);
+        let mut all_input:Vec<String> = self.escape_strings(&build.inputs);
 
         all_input.insert(0, build.rule.clone());
 
