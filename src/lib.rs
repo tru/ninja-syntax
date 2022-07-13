@@ -185,7 +185,7 @@ impl NinjaWriter {
 
     fn write_line(&mut self, line: &str) {
         let out = format!("{}\n", line);
-        _ = self.memory_p.write(out.as_bytes()).unwrap();
+        self.memory_p.write_all(out.as_bytes()).unwrap();
     }
 
     fn dollars_in_line(&mut self, text: &str) -> usize {
@@ -241,7 +241,7 @@ impl NinjaWriter {
 
             let tstr = &mtext[..space.unwrap()];
             let out = format!("{}{} $\n", leading_space, tstr);
-            _ = self.memory_p.write(out.as_bytes()).unwrap();
+            self.memory_p.write_all(out.as_bytes()).unwrap();
 
             mtext = &mtext[space.unwrap() + 1..];
 
@@ -249,7 +249,7 @@ impl NinjaWriter {
         }
 
         let out = format!("{}{}\n", leading_space, mtext);
-        _ = self.memory_p.write(out.as_bytes()).unwrap();
+        self.memory_p.write_all(out.as_bytes()).unwrap();
     }
 
     pub fn comment(&mut self, comment: &str) -> &mut Self {
