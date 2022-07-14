@@ -2,6 +2,24 @@ use std::collections::HashMap;
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use thiserror::Error;
+
+type MyResult<T> = Result<T, Box<dyn std::error::Error>>;
+
+#[derive(Error, Debug)]
+pub enum NinjaSyntaxError {
+    #[error("Guru Meditation")]
+    GenericError,
+}
+
+macro_rules! create_setter {
+    ($func_name:ident) => {
+        pub fn $func_name(&mut self, val: &str) -> &mut Self {
+            self.$func_name = val.to_string();
+            self
+        }
+    };
+}
 
 pub struct NinjaRule {
     name: String,
@@ -32,33 +50,17 @@ impl NinjaRule {
         }
     }
 
-    pub fn name(&mut self, val: &str) -> &mut Self {
-        self.name = val.to_string();
-        self
-    }
-
-    pub fn command(&mut self, val: &str) -> &mut Self {
-        self.command = val.to_string();
-        self
-    }
-
-    pub fn description(&mut self, val: &str) -> &mut Self {
-        self.description = val.to_string();
-        self
-    }
-
-    pub fn depfile(&mut self, val: &str) -> &mut Self {
-        self.depfile = val.to_string();
-        self
-    }
+    create_setter!(name);
+    create_setter!(command);
+    create_setter!(description);
+    create_setter!(depfile);
+    create_setter!(pool);
+    create_setter!(rspfile);
+    create_setter!(rspfile_content);
+    create_setter!(deps);
 
     pub fn generator(&mut self, val: bool) -> &mut Self {
         self.generator = val;
-        self
-    }
-
-    pub fn pool(&mut self, val: &str) -> &mut Self {
-        self.pool = val.to_string();
         self
     }
 
@@ -67,20 +69,6 @@ impl NinjaRule {
         self
     }
 
-    pub fn rspfile(&mut self, val: &str) -> &mut Self {
-        self.rspfile = val.to_string();
-        self
-    }
-
-    pub fn rspfile_content(&mut self, val: &str) -> &mut Self {
-        self.rspfile_content = val.to_string();
-        self
-    }
-
-    pub fn deps(&mut self, val: &str) -> &mut Self {
-        self.deps = val.to_string();
-        self
-    }
 }
 
 fn to_vec_string(in_vec: &[&str]) -> Vec<String> {
@@ -183,18 +171,19 @@ impl NinjaWriter {
         }
     }
 
-    fn write_line(&mut self, line: &str) {
+    fn write_line(&mut self, line: &str) -> MyResult<()> {
         let out = format!("{}\n", line);
-        self.memory_p.write(out.as_bytes()).unwrap();
+        self.memory_p.write_all(out.as_bytes())?;
+        Ok(())
     }
 
     fn dollars_in_line(&mut self, text: &str) -> usize {
-        return text.matches("&").count();
+        return text.matches('&').count();
     }
 
-    pub fn as_string(&mut self) -> &str {
-        let ret = std::str::from_utf8(&self.memory_p).unwrap();
-        return ret;
+    pub fn as_string(&mut self) -> MyResult<&str> {
+        let ret = std::str::from_utf8(&self.memory_p)?;
+        Ok(ret)
     }
 
     pub fn close(&mut self) -> std::io::Result<()> {
@@ -203,11 +192,11 @@ impl NinjaWriter {
             .write(true)
             .truncate(true)
             .open(&self.file_path)?;
-        fp.write(&self.memory_p)?;
+        _ = fp.write(&self.memory_p)?;
         Ok(())
     }
 
-    fn wrapped_line(&mut self, text: &str, indent: u8) {
+    fn wrapped_line(&mut self, text: &str, indent: u8) -> MyResult<()> {
         let mut leading_space = "  ".repeat(indent.into());
         let mut mtext = text;
 
@@ -216,9 +205,9 @@ impl NinjaWriter {
             let avail = self.width - leading_space.len() - 2;
             let mut space: Option<usize> = Some(avail);
             loop {
-                let slice = &mtext[..space.unwrap()];
-                space = slice.rfind(" ");
-                if space.is_none() || self.dollars_in_line(&mtext[..space.unwrap()]) % 2 == 0 {
+                let slice = &mtext[..space.ok_or(NinjaSyntaxError::GenericError)?];
+                space = slice.rfind(' ');
+                if space.is_none() || self.dollars_in_line(&mtext[..space.ok_or(NinjaSyntaxError::GenericError)?]) % 2 == 0 {
                     break;
                 }
             }
@@ -226,10 +215,10 @@ impl NinjaWriter {
             if space.is_none() {
                 space = Some(avail - 1);
                 loop {
-                    let slice = &mtext[..space.unwrap() + 1];
-                    space = slice.find(" ");
+                    let slice = &mtext[..space.ok_or(NinjaSyntaxError::GenericError)? + 1];
+                    space = slice.find(' ');
 
-                    if space.is_none() || self.dollars_in_line(&mtext[..space.unwrap()]) % 2 == 0 {
+                    if space.is_none() || self.dollars_in_line(&mtext[..space.ok_or(NinjaSyntaxError::GenericError)?]) % 2 == 0 {
                         break;
                     }
                 }
@@ -239,33 +228,35 @@ impl NinjaWriter {
                 break;
             }
 
-            let tstr = &mtext[..space.unwrap()];
+            let tstr = &mtext[..space.ok_or(NinjaSyntaxError::GenericError)?];
             let out = format!("{}{} $\n", leading_space, tstr);
-            self.memory_p.write(out.as_bytes()).unwrap();
+            self.memory_p.write_all(out.as_bytes())?;
 
-            mtext = &mtext[space.unwrap() + 1..];
+            mtext = &mtext[space.ok_or(NinjaSyntaxError::GenericError)? + 1..];
 
             leading_space = "  ".repeat((indent + 2).into());
         }
 
         let out = format!("{}{}\n", leading_space, mtext);
-        self.memory_p.write(out.as_bytes()).unwrap();
+        self.memory_p.write_all(out.as_bytes())?;
+
+        Ok(())
     }
 
     pub fn comment(&mut self, comment: &str) -> &mut Self {
         let sc = format!("# {}", comment);
-        self.write_line(&sc);
+        self.write_line(&sc).ok();
         self
     }
 
     pub fn newline(&mut self) -> &mut Self {
-        self.write_line("");
+        self.write_line("").ok();
         self
     }
 
     pub fn variable(&mut self, key: &str, value: &str, indent: u8) -> &mut Self {
         let var = format!("{} = {}", key, value);
-        self.wrapped_line(&var, indent);
+        self.wrapped_line(&var, indent).ok();
         self
     }
 
@@ -277,14 +268,14 @@ impl NinjaWriter {
 
     pub fn pool(&mut self, name: &str, depth: u8) -> &mut Self {
         let out = format!("pool {}", name);
-        self.write_line(&out);
+        self.write_line(&out).ok();
         self.variable("depth", &format!("{}", depth), 1);
         self
     }
 
     pub fn rule(&mut self, rule: &NinjaRule) -> &mut Self {
         let out = format!("rule {}", rule.name);
-        self.wrapped_line(&out, 0);
+        self.wrapped_line(&out, 0).ok();
         self.variable("command", &rule.command, 1);
 
         if !rule.description.is_empty() {
@@ -323,16 +314,16 @@ impl NinjaWriter {
     }
 
     fn escape_path(&mut self, word: &str) -> String {
-        return word.replace("$", "$$").replace(" ", "$ ").replace(":", "$:");
+        word.replace('$', "$$").replace(' ', "$ ").replace(':', "$:")
     }
 
-    fn escape_strings(&mut self, vec: &Vec<String>) -> Vec<String> {
+    fn escape_strings(&mut self, vec: &[String]) -> Vec<String> {
         vec.iter().map(|x| self.escape_path(x)).collect()
     }
 
     pub fn build(&mut self, build: &NinjaBuild) -> &mut Self {
         let mut outputs:Vec<String> = self.escape_strings(&build.outputs);
-        let mut all_input:Vec<String> = self.escape_strings(&&build.inputs);
+        let mut all_input:Vec<String> = self.escape_strings(&build.inputs);
 
         all_input.insert(0, build.rule.clone());
 
@@ -352,7 +343,7 @@ impl NinjaWriter {
         }
 
         let out = format!("build {}: {}", outputs.join(" "), all_input.join(" "));
-        self.write_line(&out);
+        self.write_line(&out).ok();
 
         if !build.pool.is_empty() {
             self.variable("pool", &build.pool, 1);

@@ -10,18 +10,18 @@ mod tests {
 
     #[test]
     fn comment() {
-        assert_eq!("# Hello\n", nw().comment("Hello").as_string());
+        assert_eq!("# Hello\n", nw().comment("Hello").as_string().unwrap());
     }
 
     #[test]
     fn newline() {
-        assert_eq!("\n", nw().newline().as_string());
+        assert_eq!("\n", nw().newline().as_string().unwrap());
     }
 
     #[test]
     fn variable() {
-        assert_eq!("foo = bar\n", nw().variable("foo", "bar", 0).as_string());
-        assert_eq!("  foo = bar\n", nw().variable("foo", "bar", 1).as_string());
+        assert_eq!("foo = bar\n", nw().variable("foo", "bar", 0).as_string().unwrap());
+        assert_eq!("  foo = bar\n", nw().variable("foo", "bar", 1).as_string().unwrap());
     }
 
     #[test]
@@ -29,7 +29,7 @@ mod tests {
         assert_eq!(
             "foo = bar hello world\n",
             nw().variable_list("foo", &["bar", "hello", "world"], 0)
-                .as_string()
+                .as_string().unwrap()
         );
     }
 
@@ -37,7 +37,7 @@ mod tests {
     fn pool() {
         assert_eq!(
             "pool console\n  depth = 2\n",
-            nw().pool("console", 2).as_string()
+            nw().pool("console", 2).as_string().unwrap()
         );
     }
 
@@ -49,7 +49,7 @@ mod tests {
         assert_eq!(
             res,
             nw().rule(&NinjaRule::new("cc", "$cc $in -o $out"))
-                .as_string()
+                .as_string().unwrap()
         );
     }
 
@@ -79,21 +79,21 @@ mod tests {
                     .rspfile_content("full_content")
                     .deps("msvc")
             )
-            .as_string()
+            .as_string().unwrap()
         );
     }
 
     #[test]
     fn build() {
-      assert_eq!("build foo.o: cc foo.c\n", nw().build(&NinjaBuild::new(&["foo.o"], "cc").inputs(&["foo.c"])).as_string());
-      assert_eq!("build out$ dir/foo$:bar.o: cc in$ dir/foo.c\n", nw().build(&NinjaBuild::new(&["out dir/foo:bar.o"], "cc").inputs(&["in dir/foo.c"])).as_string());
+      assert_eq!("build foo.o: cc foo.c\n", nw().build(&NinjaBuild::new(&["foo.o"], "cc").inputs(&["foo.c"])).as_string().unwrap());
+      assert_eq!("build out$ dir/foo$:bar.o: cc in$ dir/foo.c\n", nw().build(&NinjaBuild::new(&["out dir/foo:bar.o"], "cc").inputs(&["in dir/foo.c"])).as_string().unwrap());
     }
 
     #[test]
     fn build_implicit() {
-      assert_eq!("build foo.o: cc foo.c | foo.h\n", nw().build(&NinjaBuild::new(&["foo.o"], "cc").inputs(&["foo.c"]).implicit(&["foo.h"])).as_string());
-      assert_eq!("build foo.o: cc foo.c || foo.h\n", nw().build(&NinjaBuild::new(&["foo.o"], "cc").inputs(&["foo.c"]).order_only(&["foo.h"])).as_string());
-      assert_eq!("build foo.o | foo.ast: cc\n", nw().build(&NinjaBuild::new(&["foo.o"], "cc").implicit_outputs(&["foo.ast"])).as_string());
+      assert_eq!("build foo.o: cc foo.c | foo.h\n", nw().build(&NinjaBuild::new(&["foo.o"], "cc").inputs(&["foo.c"]).implicit(&["foo.h"])).as_string().unwrap());
+      assert_eq!("build foo.o: cc foo.c || foo.h\n", nw().build(&NinjaBuild::new(&["foo.o"], "cc").inputs(&["foo.c"]).order_only(&["foo.h"])).as_string().unwrap());
+      assert_eq!("build foo.o | foo.ast: cc\n", nw().build(&NinjaBuild::new(&["foo.o"], "cc").implicit_outputs(&["foo.ast"])).as_string().unwrap());
     }
 
     #[test]
@@ -114,6 +114,6 @@ mod tests {
             .dyndep("dyndep")
             .pool("hello")
             .variables(&var)
-        ).as_string());
+        ).as_string().unwrap());
     }
 }
