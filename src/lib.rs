@@ -12,6 +12,15 @@ pub enum NinjaSyntaxError {
     GenericError,
 }
 
+macro_rules! create_setter {
+    ($func_name:ident) => {
+        pub fn $func_name(&mut self, val: &str) -> &mut Self {
+            self.$func_name = val.to_string();
+            self
+        }
+    };
+}
+
 pub struct NinjaRule {
     name: String,
     command: String,
@@ -41,33 +50,17 @@ impl NinjaRule {
         }
     }
 
-    pub fn name(&mut self, val: &str) -> &mut Self {
-        self.name = val.to_string();
-        self
-    }
-
-    pub fn command(&mut self, val: &str) -> &mut Self {
-        self.command = val.to_string();
-        self
-    }
-
-    pub fn description(&mut self, val: &str) -> &mut Self {
-        self.description = val.to_string();
-        self
-    }
-
-    pub fn depfile(&mut self, val: &str) -> &mut Self {
-        self.depfile = val.to_string();
-        self
-    }
+    create_setter!(name);
+    create_setter!(command);
+    create_setter!(description);
+    create_setter!(depfile);
+    create_setter!(pool);
+    create_setter!(rspfile);
+    create_setter!(rspfile_content);
+    create_setter!(deps);
 
     pub fn generator(&mut self, val: bool) -> &mut Self {
         self.generator = val;
-        self
-    }
-
-    pub fn pool(&mut self, val: &str) -> &mut Self {
-        self.pool = val.to_string();
         self
     }
 
@@ -76,20 +69,6 @@ impl NinjaRule {
         self
     }
 
-    pub fn rspfile(&mut self, val: &str) -> &mut Self {
-        self.rspfile = val.to_string();
-        self
-    }
-
-    pub fn rspfile_content(&mut self, val: &str) -> &mut Self {
-        self.rspfile_content = val.to_string();
-        self
-    }
-
-    pub fn deps(&mut self, val: &str) -> &mut Self {
-        self.deps = val.to_string();
-        self
-    }
 }
 
 fn to_vec_string(in_vec: &[&str]) -> Vec<String> {
